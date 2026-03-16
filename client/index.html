@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leave Management System | Kenya Police Service</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="login-page">
+
+    <!-- HEADER -->
+    <header class="header">
+        <div class="header-left">
+            <img src="logo.png" alt="KPS Logo" class="header-logo">
+            <div class="header-titles">
+                <h1>Kenya Police Service</h1>
+                <h2>Leave Management System</h2>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
+            <img src="logo2.png" alt="KPS Logo" class="header-logo-right">
+        </div>
+    </header>
+
+    <!-- Login container -->
+    <div class="login-container">
+        <div class="login-card">
+
+            <!-- LOGIN TABS -->
+            <div class="login-tabs">
+                <button class="login-tab active" onclick="switchLoginTab('staff-login')">Staff Login</button>
+                <button class="login-tab" onclick="switchLoginTab('admin-login')">Admin Login</button>
+                <button class="login-tab" onclick="switchLoginTab('register')">Staff Register</button>
+                <button class="login-tab" onclick="switchLoginTab('admin-register')">Admin Register</button>
+            </div>
+
+            <!-- ALERT -->
+            <div class="alert" id="login-alert"></div>
+
+            <!-- STAFF LOGIN FORM -->
+            <div class="login-form active" id="staff-login">
+                <h3>Staff Login</h3>
+                <div class="form-group">
+                    <label>Staff Number</label>
+                    <input type="text" id="staff-number" placeholder="Enter your staff number">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="staff-password" placeholder="Enter your password">
+                </div>
+                <button class="btn btn-primary" style="width:100%" onclick="staffLogin()">Login</button>
+            </div>
+
+            <!-- ADMIN LOGIN FORM -->
+            <div class="login-form" id="admin-login">
+                <h3>Admin Login</h3>
+                <div class="form-group">
+                    <label>Admin Number</label>
+                    <input type="text" id="admin-number" placeholder="Enter your admin number">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="admin-password" placeholder="Enter your password">
+                </div>
+                <button class="btn btn-primary" style="width:100%" onclick="adminLogin()">Login</button>
+            </div>
+
+            <!-- STAFF REGISTER FORM -->
+            <div class="login-form" id="register">
+                <h3>Staff Registration</h3>
+                <div class="form-group">
+                    <label>Staff Number</label>
+                    <input type="text" id="reg-staff-number" placeholder="Enter your staff number">
+                </div>
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="reg-full-name" placeholder="Enter your full name">
+                </div>
+                <div class="form-group">
+                    <label>Gender</label>
+                    <select id="reg-gender">
+                        <option value="">Select gender</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="reg-email" placeholder="Enter your email">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="reg-password" placeholder="Create a password">
+                </div>
+                <div class="form-group">
+                    <label>Confirm Password</label>
+                    <input type="password" id="reg-confirm-password" placeholder="Confirm your password">
+                </div>
+                <button class="btn btn-primary" style="width:100%" onclick="registerStaff()">Register</button>
+            </div>
+
+            <!-- ADMIN REGISTER FORM -->
+            <div class="login-form" id="admin-register">
+                <h3>Admin Registration</h3>
+                <div class="form-group">
+                    <label>Admin Number</label>
+                    <input type="text" id="reg-admin-number" placeholder="Enter your admin number">
+                </div>
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="reg-admin-full-name" placeholder="Enter your full name">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="reg-admin-email" placeholder="Enter your email">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="reg-admin-password" placeholder="Create a password">
+                </div>
+                <div class="form-group">
+                    <label>Confirm Password</label>
+                    <input type="password" id="reg-admin-confirm-password" placeholder="Confirm your password">
+                </div>
+                <button class="btn btn-primary" style="width:100%" onclick="registerAdmin()">Register</button>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+</body>
+</html>

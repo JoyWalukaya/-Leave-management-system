@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Kenya Police Service</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header class="header">
+        <div class="header-left">
+            <img src="logo.png" alt="KPS Logo" class="header-logo">
+            <div class="header-titles">
+                <h1>Kenya Police Service</h1>
+                <h2>Leave Management System — Admin</h2>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
+            <img src="logo2.png" alt="KPS Logo" class="header-logo-right">
+        </div>
+    </header>
+
+   <!-- NAVBAR -->
+    <nav class="navbar">
+        <button class="nav-btn active" onclick="switchTab('applications', this)">Leave Applications</button>
+        <button class="nav-btn" onclick="switchTab('onleave', this)">Staff on Leave</button>
+        <button class="nav-btn" onclick="switchTab('switches', this)">Leave Switches</button>
+        <button class="nav-btn" onclick="switchTab('pending', this)">Pending Accounts</button>
+        <button class="nav-btn" onclick="switchTab('registry', this)">Add Staff</button>
+        <button class="nav-btn" onclick="switchTab('stafflist', this)">Staff Registry</button>
+        <div class="nav-right">
+            <span class="nav-user" id="nav-admin-name"></span>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <main class="main">
+
+        <div class="alert" id="main-alert"></div>
+
+        <!-- TAB 1: LEAVE APPLICATIONS -->
+        <div class="tab-content active" id="tab-applications">
+            <div class="card">
+                <div class="card-title">Leave Applications</div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Staff Name</th>
+                                <th>Staff No.</th>
+                                <th>Section</th>
+                                <th>Leave Type</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Days</th>
+                                <th>Reason</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="applications-table">
+                            <tr><td colspan="10" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 
+             TAB 2: STAFF ON LEAVE
+              -->
+        <div class="tab-content" id="tab-onleave">
+            <div class="card">
+                <div class="card-title">Staff Currently on Leave</div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Staff Name</th>
+                                <th>Staff No.</th>
+                                <th>Section</th>
+                                <th>Leave Type</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Days</th>
+                            </tr>
+                        </thead>
+                        <tbody id="onleave-table">
+                            <tr><td colspan="7" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 
+             TAB 3: PENDING ACCOUNTS
+              -->
+        <div class="tab-content" id="tab-pending">
+            <div class="card">
+                <div class="card-title">Pending Staff Accounts</div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Staff Number</th>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Gender</th>
+                                <th>Section</th>
+                                <th>Role</th>
+                                <th>Date Joined</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pending-table">
+                            <tr><td colspan="8" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 
+             TAB 4: ADD STAFF TO REGISTRY
+              -->
+        <div class="tab-content" id="tab-registry">
+            <div class="card">
+                <div class="card-title">Add Staff Number to Registry</div>
+                <div class="alert" id="registry-alert"></div>
+
+                <div class="form-group">
+                    <label>Staff Number</label>
+                    <input type="text" id="reg-staff-number" placeholder="Enter staff number">
+                </div>
+
+                <div class="form-group">
+                    <label>Section</label>
+                    <select id="reg-section">
+                        <option value="">Select section</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Role</label>
+                    <select id="reg-role">
+                        <option value="">Select role</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" onclick="addToRegistry()">Add to Registry</button>
+            </div>
+        </div>
+       <!-- TAB 5: STAFF REGISTRY-->
+        <div class="tab-content" id="tab-stafflist">
+            <div class="card">
+                <div class="card-title">Staff Registry</div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Staff Number</th>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Gender</th>
+                                <th>Section</th>
+                                <th>Role</th>
+                                <th>Date Joined</th>
+                                <th>Registration</th>
+                                <th>Account Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stafflist-table">
+                            <tr><td colspan="9" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- 
+             TAB: LEAVE SWITCHES
+              -->
+        <div class="tab-content" id="tab-switches">
+            <div class="card">
+                <div class="card-title">Leave Switch Requests</div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Staff Name</th>
+                                <th>Staff No.</th>
+                                <th>Section</th>
+                                <th>From Leave</th>
+                                <th>To Leave</th>
+                                <th>Switch Date</th>
+                                <th>Reason</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="switches-table">
+                            <tr><td colspan="9" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- approving or denying -->
+    <div id="review-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+         background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center;">
+        <div style="background:var(--card-bg); border-radius:10px; padding:2rem; width:90%; max-width:450px;
+                    border-top:5px solid var(--navy);">
+            <h3 style="margin-bottom:1rem; color:var(--navy)" id="modal-title">Review Application</h3>
+            <input type="hidden" id="modal-application-id">
+            <input type="hidden" id="modal-action">
+            <div class="form-group">
+                <label>Comment (optional)</label>
+                <textarea id="modal-comment" rows="3" placeholder="Add a comment for the staff member"></textarea>
+            </div>
+            <div style="display:flex; gap:1rem; justify-content:flex-end;">
+                <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" id="modal-confirm-btn" onclick="confirmReview()">Confirm</button>
+            </div>
+        </div>
+    </div>
+<!-- SWITCH REVIEW  -->
+<div id="switch-review-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center;">
+    <div style="background:var(--card-bg); border-radius:10px; padding:2rem; width:90%; max-width:450px;
+                border-top:5px solid var(--navy);">
+        <h3 style="margin-bottom:1rem; color:var(--navy)" id="switch-modal-title">Review Leave Switch</h3>
+        <input type="hidden" id="switch-review-id">
+        <input type="hidden" id="switch-review-action">
+        <div class="form-group">
+            <label>Comment (optional)</label>
+            <textarea id="switch-review-comment" rows="3" placeholder="Add a comment"></textarea>
+        </div>
+        <div style="display:flex; gap:1rem; justify-content:flex-end;">
+            <button class="btn btn-outline" onclick="closeSwitchReviewModal()">Cancel</button>
+            <button class="btn btn-primary" id="switch-review-confirm-btn" onclick="confirmSwitchReview()">Confirm</button>
+        </div>
+    </div>
+</div>
+    <script src="js/admin.js"></script>
+</body>
+</html>

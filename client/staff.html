@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Dashboard | Kenya Police Service</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header class="header">
+        <div class="header-left">
+            <img src="logo.png" alt="KPS Logo" class="header-logo">
+            <div class="header-titles">
+                <h1>Kenya Police Service</h1>
+                <h2>Leave Management System</h2>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
+            <img src="logo2.png" alt="KPS Logo" class="header-logo-right">
+        </div>
+    </header>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <button class="nav-btn active" onclick="switchTab('dashboard', this)">Dashboard</button>
+        <button class="nav-btn" onclick="switchTab('apply', this)">Apply for Leave</button>
+        <button class="nav-btn" onclick="switchTab('applications', this)">My Applications</button>
+        <button class="nav-btn" onclick="switchTab('profile', this)">My Profile</button>
+        <div class="nav-right">
+            <span class="nav-user" id="nav-user-name"></span>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+
+        <!-- ALERT -->
+        <div class="alert" id="main-alert"></div>
+
+        <!-- ========================
+             TAB 1: DASHBOARD
+             ======================== -->
+        <div class="tab-content active" id="tab-dashboard">
+
+            <!-- Active leave countdown -->
+            <div id="countdown-container" style="display:none">
+                <div class="countdown">
+                    <h3>🟢 Currently on <span id="countdown-leave-type"></span></h3>
+                    <p style="color:var(--white); margin-bottom:1rem; font-size:0.85rem">
+                        <span id="countdown-dates"></span>
+                    </p>
+                    <p style="color:var(--gold); margin-bottom:1rem; font-size:0.85rem">Leave ends in:</p>
+                    <div class="countdown-timer">
+                        <div class="countdown-unit">
+                            <span class="countdown-number" id="cd-days">00</span>
+                            <span class="countdown-label">Days</span>
+                        </div>
+                        <span class="countdown-separator">:</span>
+                        <div class="countdown-unit">
+                            <span class="countdown-number" id="cd-hours">00</span>
+                            <span class="countdown-label">Hours</span>
+                        </div>
+                        <span class="countdown-separator">:</span>
+                        <div class="countdown-unit">
+                            <span class="countdown-number" id="cd-minutes">00</span>
+                            <span class="countdown-label">Minutes</span>
+                        </div>
+                        <span class="countdown-separator">:</span>
+                        <div class="countdown-unit">
+                            <span class="countdown-number" id="cd-seconds">00</span>
+                            <span class="countdown-label">Seconds</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leave balances -->
+            <div class="card">
+                <div class="card-title">My Leave Balances</div>
+                <div class="stats-grid" id="balances-grid">
+                    <p style="color:var(--text-secondary)">Loading balances...</p>
+                </div>
+            </div>
+
+            <!-- Recent applications -->
+            <div class="card">
+                <div class="card-title">Recent Applications</div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Leave Type</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Days</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-applications">
+                            <tr><td colspan="5" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ========================
+             TAB 2: APPLY FOR LEAVE
+             ======================== -->
+        <div class="tab-content" id="tab-apply">
+            <div class="card">
+                <div class="card-title">Apply for Leave</div>
+                <div class="alert" id="apply-alert"></div>
+
+                <div class="form-group">
+                    <label>Leave Type</label>
+                    <select id="apply-leave-type" onchange="checkLeaveBalance()">
+                        <option value="">Select leave type</option>
+                    </select>
+                </div>
+
+                <div id="balance-info" style="display:none; margin-bottom:1rem;">
+                    <div class="alert alert-info show" id="balance-info-text"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Start Date</label>
+                    <input type="date" id="apply-start-date" onchange="calculateDays()">
+                </div>
+
+                <div class="form-group">
+                    <label>End Date</label>
+                    <input type="date" id="apply-end-date" onchange="calculateDays()">
+                </div>
+
+                <div id="days-preview" style="display:none; margin-bottom:1rem;">
+                    <div class="alert alert-info show" id="days-preview-text"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Reason</label>
+                    <textarea id="apply-reason" rows="4" placeholder="Enter reason for leave"></textarea>
+                </div>
+
+                <button class="btn btn-primary" onclick="applyForLeave()">Submit Application</button>
+            </div>
+        </div>
+
+        <!-- ========================
+             TAB 3: MY APPLICATIONS
+             ======================== -->
+        <div class="tab-content" id="tab-applications">
+            <div class="card">
+                <div class="card-title">My Applications</div>
+                <div class="table-container">
+                    <table>
+                       <thead>
+    <tr>
+        <th>Leave Type</th>
+        <th>Start Date</th>
+        <th>End Date</th>
+        <th>Days</th>
+        <th>Status</th>
+        <th>Admin Comment</th>
+        <th>Action</th>
+        <th>Switch Leave</th>
+    </tr>
+</thead>
+                        <tbody id="applications-table">
+                            <tr><td colspan="7" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: MY PROFILE -->
+        <div class="tab-content" id="tab-profile">
+            <div class="card">
+                <div class="card-title">My Profile</div>
+                <div id="profile-content">
+                    <p style="color:var(--text-secondary)">Loading profile...</p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+<!-- LEAVE SWITCH MODAL -->
+<<!-- LEAVE SWITCH MODAL -->
+<div id="switch-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center;">
+    <div style="background:var(--card-bg); border-radius:10px; padding:2rem; width:90%; max-width:450px;
+                border-top:5px solid var(--red);">
+        <h3 style="margin-bottom:1rem; color:var(--navy)">Request Leave Switch</h3>
+        <input type="hidden" id="switch-original-id">
+        <input type="hidden" id="switch-original-end">
+        <div class="form-group">
+            <label>Switch To</label>
+            <select id="switch-leave-type" onchange="checkSwitchBalance()">
+                <option value="">Select new leave type</option>
+            </select>
+        </div>
+        <div id="switch-balance-info" style="display:none; margin-bottom:1rem;
+             padding:0.7rem; background:var(--bg); border-radius:6px; font-size:0.85rem;">
+        </div>
+        <div class="form-group">
+            <label>Switch Date (new leave starts / old leave ends)</label>
+            <input type="date" id="switch-date">
+        </div>
+        <div class="form-group">
+            <label>New Leave End Date</label>
+            <input type="date" id="switch-new-end-date">
+        </div>
+        <div class="form-group">
+            <label>Reason</label>
+            <textarea id="switch-reason" rows="3" placeholder="Why are you switching leave type?"></textarea>
+        </div>
+        <div style="display:flex; gap:1rem; justify-content:flex-end;">
+            <button class="btn btn-outline" onclick="closeSwitchModal()">Cancel</button>
+            <button class="btn btn-danger" onclick="submitLeaveSwitch()">Submit Request</button>
+        </div>
+    </div>
+</div>
+    <script src="js/staff.js"></script>
+</body>
+</html>
