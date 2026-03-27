@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Org Admin | Leave Management System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="header">
+        <div class="header-left">
+            <img src="logo.png" alt="Logo" class="header-logo">
+            <div class="header-titles">
+                <h1>Leave Management System</h1>
+                <h2 id="org-admin-title">Organization Admin Dashboard</h2>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
+            <img src="logo2.png" alt="Logo" class="header-logo-right">
+        </div>
+    </header>
+
+    <nav class="navbar">
+        <button class="nav-btn active" onclick="switchTab('settings', this)">Settings</button>
+        <button class="nav-btn" onclick="switchTab('departments', this)">Departments</button>
+        <button class="nav-btn" onclick="switchTab('sections', this)">Sections</button>
+        <button class="nav-btn" onclick="switchTab('roles', this)">Roles</button>
+        <button class="nav-btn" onclick="switchTab('leave-types', this)">Leave Types</button>
+        <button class="nav-btn" onclick="switchTab('entitlements', this)">Entitlements</button>
+        <button class="nav-btn" onclick="switchTab('work-days', this)">Work Days</button>
+        <button class="nav-btn" onclick="switchTab('holidays', this)">Holidays</button>
+        <button class="nav-btn" onclick="switchTab('dept-admins', this)">Dept Admins</button>
+        <button class="nav-btn" onclick="switchTab('staff', this)">All Staff</button>
+        <button class="nav-btn" onclick="switchTab('profile', this)">My Profile</button>
+        <div class="nav-right">
+            <span class="nav-user" id="nav-user-name"></span>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <main class="main">
+
+        <div class="alert" id="main-alert"></div>
+
+        <!-- SETTINGS TAB -->
+        <div class="tab-content active" id="tab-settings">
+            <div class="card">
+                <div class="card-title">Organization Settings</div>
+                <div class="alert" id="settings-alert"></div>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
+                    <div class="form-group">
+                        <label>Year Reset Month (1-12)</label>
+                        <input type="number" id="year-reset-month" min="1" max="12" placeholder="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Year Reset Day (1-31)</label>
+                        <input type="number" id="year-reset-day" min="1" max="31" placeholder="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Saturday Rule</label>
+                        <select id="saturday-rule">
+                            <option value="0">Not a working day</option>
+                            <option value="0.5">Half day</option>
+                            <option value="1">Full day</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Carry Forward Days (Annual Leave)</label>
+                        <input type="number" id="carry-forward-days" min="0" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Carry Forward Expiry (Months)</label>
+                        <input type="number" id="carry-forward-expiry" min="0" placeholder="3">
+                    </div>
+                    <div class="form-group">
+                        <label>Allow Leave Switch</label>
+                        <select id="allow-leave-switch">
+                            <option value="1">Yes</option>
+                            <option value="0">No</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Leave Switch Notice Days</label>
+                        <input type="number" id="leave-switch-notice" min="0" placeholder="0">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+            </div>
+        </div>
+
+        <!-- DEPARTMENTS TAB -->
+        <div class="tab-content" id="tab-departments">
+            <div class="card">
+                <div class="card-title">Departments</div>
+                <div class="alert" id="dept-alert"></div>
+                <div style="display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+                    <div class="form-group" style="flex:1; min-width:200px;">
+                        <label>Department Name</label>
+                        <input type="text" id="dept-name" placeholder="e.g. CID">
+                    </div>
+                    <div class="form-group" style="flex:1; min-width:200px;">
+                        <label>Code (optional)</label>
+                        <input type="text" id="dept-code" placeholder="e.g. CID">
+                    </div>
+                    <div style="display:flex; align-items:flex-end;">
+                        <button class="btn btn-primary" onclick="createDepartment()">Add Department</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Code</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="departments-table">
+                            <tr><td colspan="3" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTIONS TAB -->
+        <div class="tab-content" id="tab-sections">
+            <div class="card">
+                <div class="card-title">Sections</div>
+                <div class="alert" id="section-alert"></div>
+                <div style="display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+                    <div class="form-group" style="flex:1; min-width:200px;">
+                        <label>Department</label>
+                        <select id="section-dept">
+                            <option value="">Select department</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:1; min-width:200px;">
+                        <label>Section Name</label>
+                        <input type="text" id="section-name" placeholder="e.g. Homicide">
+                    </div>
+                    <div style="display:flex; align-items:flex-end;">
+                        <button class="btn btn-primary" onclick="createSection()">Add Section</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sections-table">
+                            <tr><td colspan="3" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ROLES TAB -->
+        <div class="tab-content" id="tab-roles">
+            <div class="card">
+                <div class="card-title">Roles</div>
+                <div class="alert" id="role-alert"></div>
+                <div style="display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+                    <div class="form-group" style="flex:1; min-width:200px;">
+                        <label>Role Name</label>
+                        <input type="text" id="role-name" placeholder="e.g. Manager">
+                    </div>
+                    <div class="form-group" style="flex:1; min-width:200px;">
+                        <label>Is Managerial</label>
+                        <select id="role-managerial">
+                            <option value="0">No</option>
+                            <option value="1">Yes</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; align-items:flex-end;">
+                        <button class="btn btn-primary" onclick="createRole()">Add Role</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Managerial</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="roles-table">
+                            <tr><td colspan="3" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- LEAVE TYPES TAB -->
+        <div class="tab-content" id="tab-leave-types">
+            <div class="card">
+                <div class="card-title">Leave Types</div>
+                <div class="alert" id="leave-type-alert"></div>
+                <div style="display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+                    <div class="form-group" style="flex:1; min-width:200px;">
+                        <label>Leave Type Name</label>
+                        <input type="text" id="leave-type-name" placeholder="e.g. Annual Leave">
+                    </div>
+                    <div class="form-group" style="flex:1; min-width:200px;">
+                        <label>Gender Restriction</label>
+                        <select id="leave-type-gender">
+                            <option value="any">Any</option>
+                            <option value="male">Male Only</option>
+                            <option value="female">Female Only</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; align-items:flex-end;">
+                        <button class="btn btn-primary" onclick="createLeaveType()">Add Leave Type</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Gender Restriction</th>
+                                <th>Active</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leave-types-table">
+                            <tr><td colspan="4" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ENTITLEMENTS TAB -->
+        <div class="tab-content" id="tab-entitlements">
+            <div class="card">
+                <div class="card-title">Leave Entitlements</div>
+                <div class="alert" id="entitlement-alert"></div>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+                    <div class="form-group">
+                        <label>Leave Type</label>
+                        <select id="entitlement-leave-type">
+                            <option value="">Select leave type</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Role</label>
+                        <select id="entitlement-role">
+                            <option value="">Select role</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Max Days Per Year</label>
+                        <input type="number" id="entitlement-max-days" min="1" placeholder="21">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Concurrent Staff</label>
+                        <input type="number" id="entitlement-max-concurrent" min="1" placeholder="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Min Days Before Reapply</label>
+                        <input type="number" id="entitlement-min-days" min="0" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Carry Forward Days</label>
+                        <input type="number" id="entitlement-carry-forward" min="0" placeholder="0">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="saveEntitlement()">Save Entitlement</button>
+                <div class="table-container" style="margin-top:1.5rem;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Leave Type</th>
+                                <th>Role</th>
+                                <th>Max Days</th>
+                                <th>Max Concurrent</th>
+                                <th>Min Reapply Days</th>
+                                <th>Carry Forward</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="entitlements-table">
+                            <tr><td colspan="7" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- WORK DAYS TAB -->
+        <div class="tab-content" id="tab-work-days">
+            <div class="card">
+                <div class="card-title">Work Days</div>
+                <div class="alert" id="work-days-alert"></div>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+                    <div class="form-group">
+                        <label>Department</label>
+                        <select id="work-days-dept" onchange="loadSectionsForWorkDays()">
+                            <option value="">Select department</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Section (optional)</label>
+                        <select id="work-days-section">
+                            <option value="">All sections in dept</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Monday</label>
+                        <select id="wd-monday">
+                            <option value="0">Off</option>
+                            <option value="0.5">Half Day</option>
+                            <option value="1" selected>Full Day</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tuesday</label>
+                        <select id="wd-tuesday">
+                            <option value="0">Off</option>
+                            <option value="0.5">Half Day</option>
+                            <option value="1" selected>Full Day</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Wednesday</label>
+                        <select id="wd-wednesday">
+                            <option value="0">Off</option>
+                            <option value="0.5">Half Day</option>
+                            <option value="1" selected>Full Day</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Thursday</label>
+                        <select id="wd-thursday">
+                            <option value="0">Off</option>
+                            <option value="0.5">Half Day</option>
+                            <option value="1" selected>Full Day</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Friday</label>
+                        <select id="wd-friday">
+                            <option value="0">Off</option>
+                            <option value="0.5">Half Day</option>
+                            <option value="1" selected>Full Day</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Saturday</label>
+                        <select id="wd-saturday">
+                            <option value="0" selected>Off</option>
+                            <option value="0.5">Half Day</option>
+                            <option value="1">Full Day</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Sunday</label>
+                        <select id="wd-sunday">
+                            <option value="0" selected>Off</option>
+                            <option value="0.5">Half Day</option>
+                            <option value="1">Full Day</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="saveWorkDays()">Save Work Days</button>
+                <div class="table-container" style="margin-top:1.5rem;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Department</th>
+                                <th>Section</th>
+                                <th>Mon</th>
+                                <th>Tue</th>
+                                <th>Wed</th>
+                                <th>Thu</th>
+                                <th>Fri</th>
+                                <th>Sat</th>
+                                <th>Sun</th>
+                            </tr>
+                        </thead>
+                        <tbody id="work-days-table">
+                            <tr><td colspan="9" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- HOLIDAYS TAB -->
+        <div class="tab-content" id="tab-holidays">
+            <div class="card">
+                <div class="card-title">Public Holidays</div>
+                <div class="alert" id="holiday-alert"></div>
+                <div style="display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+                    <div class="form-group" style="flex:1; min-width:200px;">
+                        <label>Holiday Name</label>
+                        <input type="text" id="holiday-name" placeholder="e.g. Christmas Day">
+                    </div>
+                    <div class="form-group" style="flex:1; min-width:200px;">
+                        <label>Date</label>
+                        <input type="date" id="holiday-date">
+                    </div>
+                    <div style="display:flex; align-items:flex-end;">
+                        <button class="btn btn-primary" onclick="createHoliday()">Add Holiday</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="holidays-table">
+                            <tr><td colspan="3" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- DEPT ADMINS TAB -->
+        <div class="tab-content" id="tab-dept-admins">
+            <div class="card">
+                <div class="card-title">Department Admins</div>
+                <div class="alert" id="dept-admin-alert"></div>
+                <div style="display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+                    <div class="form-group" style="flex:1; min-width:200px;">
+                        <label>Department</label>
+                        <select id="dept-admin-dept">
+                            <option value="">Select department</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:1; min-width:200px;">
+                        <label>Full Name</label>
+                        <input type="text" id="dept-admin-name" placeholder="Full name">
+                    </div>
+                    <div class="form-group" style="flex:1; min-width:200px;">
+                        <label>Email</label>
+                        <input type="email" id="dept-admin-email" placeholder="admin@email.com">
+                    </div>
+                    <div style="display:flex; align-items:flex-end;">
+                        <button class="btn btn-primary" onclick="createDeptAdmin()">Create Dept Admin</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Username</th>
+                                <th>Department</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dept-admins-table">
+                            <tr><td colspan="6" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ALL STAFF TAB -->
+        <div class="tab-content" id="tab-staff">
+            <div class="card">
+                <div class="card-title">All Staff</div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Staff Number</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Department</th>
+                                <th>Section</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Date Joined</th>
+                            </tr>
+                        </thead>
+                        <tbody id="staff-table">
+                            <tr><td colspan="8" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+<!-- PROFILE TAB -->
+<div class="tab-content" id="tab-profile">
+    <div class="card">
+        <div class="card-title">My Profile</div>
+        <div id="org-admin-profile-content">
+            <p style="color:var(--text-secondary)">Loading...</p>
+        </div>
+    </div>
+</div>
+    </main>
+
+    <script src="js/org_admin.js"></script>
+</body>
+</html>

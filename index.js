@@ -4,15 +4,20 @@ require('dotenv').config();
 
 const app = express();
 const authRoutes = require('./routes/auth');
-const adminRoutes = require('./routes/admin');
+const superAdminRoutes = require('./routes/superAdmin');
+const orgAdminRoutes = require('./routes/orgAdmin');
+const deptAdminRoutes = require('./routes/deptAdmin');
 const staffRoutes = require('./routes/staff');
-const db = require('./config/db');
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/super-admin', superAdminRoutes);
+app.use('/api/org-admin', orgAdminRoutes);
+app.use('/api/dept-admin', deptAdminRoutes);
 app.use('/api/staff', staffRoutes);
 
 // Test route

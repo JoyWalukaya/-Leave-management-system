@@ -5,31 +5,25 @@ const {
     getMyProfile,
     getMyLeaveBalances,
     getAvailableLeaveTypes,
+    getDeptStaffForActing,
     applyForLeave,
     getMyApplications,
     cancelApplication,
     requestLeaveSwitch
 } = require('../controllers/staffController');
 
-// Get my profile
+// Profile and balances
 router.get('/profile', verifyStaff, getMyProfile);
-
-// Get my leave balances
 router.get('/balances', verifyStaff, getMyLeaveBalances);
-
-// Get available leave types (filtered by gender)
 router.get('/leave-types', verifyStaff, getAvailableLeaveTypes);
+router.get('/dept-staff', verifyStaff, getDeptStaffForActing);
 
-// Apply for leave
+// Leave applications
 router.post('/apply', verifyStaff, applyForLeave);
-
-// Get my applications
 router.get('/applications', verifyStaff, getMyApplications);
-
-// Cancel an application
 router.patch('/applications/cancel/:application_id', verifyStaff, cancelApplication);
 
-// Request leave switch
+// Leave switch
 router.post('/switch', verifyStaff, requestLeaveSwitch);
 
 module.exports = router;

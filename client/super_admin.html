@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin | Leave Management System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="header">
+        <div class="header-left">
+            <img src="logo.png" alt="Logo" class="header-logo">
+            <div class="header-titles">
+                <h1>Leave Management System</h1>
+                <h2>Super Admin Dashboard</h2>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
+            <img src="logo2.png" alt="Logo" class="header-logo-right">
+        </div>
+    </header>
+
+    <nav class="navbar">
+        <button class="nav-btn active" onclick="switchTab('organizations', this)">Organizations</button>
+        <button class="nav-btn" onclick="switchTab('org-admins', this)">Org Admins</button>
+        <button class="nav-btn" onclick="switchTab('dept-admins', this)">Dept Admins</button>
+        <button class="nav-btn" onclick="switchTab('all-staff', this)">All Staff</button>
+        <button class="nav-btn" onclick="switchTab('all-applications', this)">All Applications</button>
+        <div class="nav-right">
+            <span class="nav-user" id="nav-user-name"></span>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <main class="main">
+
+        <div class="alert" id="main-alert"></div>
+
+        <!-- ORGANIZATIONS TAB -->
+        <div class="tab-content active" id="tab-organizations">
+            <div class="card">
+                <div class="card-title">Organizations</div>
+                <div class="alert" id="org-alert"></div>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1rem;">
+                    <div class="form-group">
+                        <label>Organization Name</label>
+                        <input type="text" id="org-name" placeholder="e.g. Kenya Police Service">
+                    </div>
+                    <div class="form-group">
+                        <label>Code</label>
+                        <input type="text" id="org-code" placeholder="e.g. KPS">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="org-email" placeholder="org@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="text" id="org-phone" placeholder="+254...">
+                    </div>
+                    <div class="form-group">
+                        <label>Address</label>
+                        <input type="text" id="org-address" placeholder="Physical address">
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="org-submit-btn" onclick="createOrganization()">Add Organization</button>
+                <div class="table-container" style="margin-top:1.5rem;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Code</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="organizations-table">
+                            <tr><td colspan="6" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ORG ADMINS TAB -->
+        <div class="tab-content" id="tab-org-admins">
+            <div class="card">
+                <div class="card-title">Organization Admins</div>
+                <div class="alert" id="org-admin-alert"></div>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1rem;">
+                    <div class="form-group">
+                        <label>Organization</label>
+                        <select id="org-admin-org">
+                            <option value="">Select organization</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="org-admin-name" placeholder="Full name">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="org-admin-email" placeholder="admin@email.com">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="createOrgAdmin()">Create Org Admin</button>
+                <div class="table-container" style="margin-top:1.5rem;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Username</th>
+                                <th>Organization</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="org-admins-table">
+                            <tr><td colspan="6" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- DEPT ADMINS TAB -->
+        <div class="tab-content" id="tab-dept-admins">
+            <div class="card">
+                <div class="card-title">All Department Admins</div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Organization</th>
+                                <th>Department</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="overview-dept-admins">
+                            <tr><td colspan="5" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ALL STAFF TAB -->
+        <div class="tab-content" id="tab-all-staff">
+            <div class="card">
+                <div class="card-title">All Staff</div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Organization</th>
+                                <th>Department</th>
+                                <th>Section</th>
+                                <th>Staff Number</th>
+                                <th>Name</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="overview-staff">
+                            <tr><td colspan="7" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ALL APPLICATIONS TAB -->
+        <div class="tab-content" id="tab-all-applications">
+            <div class="card">
+                <div class="card-title">All Leave Applications</div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Organization</th>
+                                <th>Department</th>
+                                <th>Staff Name</th>
+                                <th>Leave Type</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="overview-applications">
+                            <tr><td colspan="7" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="js/super_admin.js"></script>
+</body>
+</html>
