@@ -1,10 +1,8 @@
 const nodemailer = require('nodemailer');
 
-// ============================
 // EMAIL TRANSPORTER
 // This connects to Gmail SMTP
 // and allows us to send emails
-// ============================
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -13,11 +11,9 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// ============================
 // SEND ORG ADMIN CREDENTIALS
 // Called when super admin creates
 // a new org admin account
-// ============================
 const sendOrgAdminCredentials = async (email, full_name, org_name, username, password) => {
     const mailOptions = {
         from: `"Leave Management System" <${process.env.EMAIL_USER}>`,
@@ -42,11 +38,9 @@ const sendOrgAdminCredentials = async (email, full_name, org_name, username, pas
     await transporter.sendMail(mailOptions);
 };
 
-// ============================
 // SEND DEPT ADMIN CREDENTIALS
 // Called when org admin creates
 // a new department admin account
-// ============================
 const sendDeptAdminCredentials = async (email, full_name, org_name, dept_name, username, password) => {
     const mailOptions = {
         from: `"Leave Management System" <${process.env.EMAIL_USER}>`,
@@ -71,11 +65,9 @@ const sendDeptAdminCredentials = async (email, full_name, org_name, dept_name, u
     await transporter.sendMail(mailOptions);
 };
 
-// ============================
 // SEND STAFF CREDENTIALS
 // Called when dept admin clicks
 // "Send Email" for a staff member
-// ============================
 const sendStaffCredentials = async (email, full_name, org_name, dept_name, section_name, username, password) => {
     const mailOptions = {
         from: `"Leave Management System" <${process.env.EMAIL_USER}>`,
@@ -102,12 +94,10 @@ const sendStaffCredentials = async (email, full_name, org_name, dept_name, secti
     await transporter.sendMail(mailOptions);
 };
 
-// ============================
 // SEND LEAVE NOTIFICATION
 // Called when a leave application
 // is approved — notifies the
 // acting staff member
-// ============================
 const sendActingStaffNotification = async (email, full_name, absent_staff_name, start_date, end_date) => {
     const mailOptions = {
         from: `"Leave Management System" <${process.env.EMAIL_USER}>`,

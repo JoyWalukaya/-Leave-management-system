@@ -243,19 +243,49 @@ async function checkLeaveBalance() {
     }
 }
 
-function calculateDays() {
+// Calculate and show exact working days preview
+async function calculateDays() {
     const startDate = document.getElementById('apply-start-date').value;
     const endDate = document.getElementById('apply-end-date').value;
     const preview = document.getElementById('days-preview');
     const previewText = document.getElementById('days-preview-text');
-    if (startDate && endDate) {
-        if (new Date(endDate) < new Date(startDate)) {
-            preview.style.display = 'block';
-            previewText.textContent = 'End date cannot be before start date.';
-            return;
-        }
+
+    if (!startDate || !endDate) return;
+
+    // Check past dates
+    const today = new Date().toISOString().split('T')[0];
+    if (startDate < today) {
         preview.style.display = 'block';
-        previewText.textContent = `Selected: ${startDate} to ${endDate}. Exact working days calculated on submission.`;
+        previewText.style.color = 'var(--red)';
+        previewText.textContent = 'Start date cannot be in the past.';
+        return;
+    }
+
+    if (endDate < startDate) {
+        preview.style.display = 'block';
+        previewText.style.color = 'var(--red)';
+        previewText.textContent = 'End date cannot be before start date.';
+        return;
+    }
+
+    preview.style.display = 'block';
+    previewText.style.color = 'var(--text-secondary)';
+    previewText.textContent = 'Calculating...';
+
+    try {
+        const data = await apiGet(`/staff/days-preview?start_date=${startDate}&end_date=${endDate}`);
+        if (!data) return;
+
+        if (data.working_days !== undefined) {
+            previewText.style.color = 'var(--navy)';
+            previewText.textContent = `This application will use ${data.working_days} working days.`;
+        } else {
+            previewText.style.color = 'var(--red)';
+            previewText.textContent = data.message || 'Could not calculate days.';
+        }
+    } catch (err) {
+        previewText.style.color = 'var(--red)';
+        previewText.textContent = 'Could not calculate working days.';
     }
 }
 
@@ -270,14 +300,22 @@ async function applyForLeave() {
         showAlert('apply-alert', 'Please fill in all required fields.', 'error');
         return;
     }
-    if (new Date(end_date) < new Date(start_date)) {
+
+    const today = new Date().toISOString().split('T')[0];
+    if (start_date < today) {
+        showAlert('apply-alert', 'Start date cannot be in the past.', 'error');
+        return;
+    }
+
+    if (end_date < start_date) {
         showAlert('apply-alert', 'End date cannot be before start date.', 'error');
         return;
     }
 
     const { ok, data } = await apiPost('/staff/apply', {
         leave_type_id: parseInt(leave_type_id),
-        start_date, end_date,
+        start_date,
+        end_date,
         acting_staff_id: acting_staff_id ? parseInt(acting_staff_id) : null,
         reason
     });
@@ -292,6 +330,7 @@ async function applyForLeave() {
         document.getElementById('balance-info').style.display = 'none';
         document.getElementById('days-preview').style.display = 'none';
         loadBalances();
+        loadRecentApplications();
     } else {
         showAlert('apply-alert', data.message, 'error');
     }
@@ -334,6 +373,7 @@ async function cancelApplication(id) {
     if (ok) {
         showAlert('main-alert', 'Application cancelled.', 'success');
         loadAllApplications();
+        loadBalances();
     } else {
         showAlert('main-alert', data.message, 'error');
     }

@@ -1,174 +1,122 @@
 const db = require('../config/db');
 
 // Calculate working days between two dates
-// Takes into account the section's work schedule
-// and public holidays for the organization
+// Uses section or department work schedule
+// Handles recurring and one-time public holidays
 const calculateWorkingDays = async (start_date, end_date, section_id) => {
-    // Get work schedule — first check section level
-    // if not found check department level
-    let [schedule] = await db.query(
-        'SELECT * FROM work_days WHERE section_id = ?',
-        [section_id]
+    let workDay = null;
+    let org_id = null;
+
+    // Try section schedule first
+    const [sectionSchedule] = await db.query(
+        'SELECT * FROM work_days WHERE section_id = ?', [section_id]
     );
 
-    if (schedule.length === 0) {
-        // No section schedule — get department schedule
+    if (sectionSchedule.length > 0) {
+        workDay = sectionSchedule[0];
         const [sectionData] = await db.query(
-            'SELECT department_id, org_id FROM sections WHERE id = ?',
-            [section_id]
+            'SELECT org_id FROM sections WHERE id = ?', [section_id]
         );
-
+        if (sectionData.length > 0) org_id = sectionData[0].org_id;
+    } else {
+        // Fall back to department schedule
+        const [sectionData] = await db.query(
+            'SELECT department_id, org_id FROM sections WHERE id = ?', [section_id]
+        );
         if (sectionData.length > 0) {
-            [schedule] = await db.query(
+            org_id = sectionData[0].org_id;
+            const [deptSchedule] = await db.query(
                 'SELECT * FROM work_days WHERE department_id = ? AND section_id IS NULL',
                 [sectionData[0].department_id]
             );
+            if (deptSchedule.length > 0) workDay = deptSchedule[0];
         }
     }
 
-    if (schedule.length === 0) {
-        throw new Error('No work schedule found for this section or department.');
-    }
+    if (!workDay) throw new Error('No work schedule found.');
 
-    const workDay = schedule[0];
-
-    const dayMap = {
-        0: workDay.sunday,
-        1: workDay.monday,
-        2: workDay.tuesday,
-        3: workDay.wednesday,
-        4: workDay.thursday,
-        5: workDay.friday,
-        6: workDay.saturday
-    };
-
-    // Get org_id from section
-    const [sectionInfo] = await db.query(
-        'SELECT org_id FROM sections WHERE id = ?',
-        [section_id]
-    );
-
-    const org_id = sectionInfo.length > 0 ? sectionInfo[0].org_id : null;
-
-    // Get public holidays for this organization
-    let holidays = [];
-    if (org_id) {
-        [holidays] = await db.query(
-            'SELECT holiday_date FROM public_holidays WHERE org_id = ?',
-            [org_id]
-        );
-    }
-
-    // Get saturday rule from org settings
-    let saturdayRule = workDay.saturday;
-    if (org_id) {
-        const [settings] = await db.query(
-            'SELECT saturday_rule FROM org_settings WHERE org_id = ?',
-            [org_id]
-        );
-        if (settings.length > 0) {
-            saturdayRule = parseFloat(settings[0].saturday_rule);
-        }
-    }
-
-    // Calculate observed holiday dates
-    // Saturday holidays move to Monday
-    // Sunday holidays move to Monday
-    const observedHolidays = holidays.map(h => {
-        const date = new Date(h.holiday_date);
-        const day = date.getDay();
-        if (day === 6) date.setDate(date.getDate() + 2);
-        if (day === 0) date.setDate(date.getDate() + 1);
-        return date.toISOString().split('T')[0];
-    });
-
-    // Count working days
-    let totalDays = 0;
-    const current = new Date(start_date);
-    const end = new Date(end_date);
-
-    while (current <= end) {
-        const dayOfWeek = current.getDay();
-        const dateStr = current.toISOString().split('T')[0];
-        const isHoliday = observedHolidays.includes(dateStr);
-
-        // Use saturday rule from org settings for saturdays
-        let dayValue = dayMap[dayOfWeek];
-        if (dayOfWeek === 6) {
-            dayValue = saturdayRule;
-        }
-
-        if (dayValue > 0 && !isHoliday) {
-            totalDays += parseFloat(dayValue);
-        }
-
-        current.setDate(current.getDate() + 1);
-    }
-
-    return totalDays;
+    return countWorkingDays(start_date, end_date, workDay, org_id);
 };
+
 const calculateWorkingDaysForDept = async (start_date, end_date, department_id, org_id) => {
     const [schedule] = await db.query(
         'SELECT * FROM work_days WHERE department_id = ? AND section_id IS NULL',
         [department_id]
     );
+    if (schedule.length === 0) throw new Error('No work schedule found for this department.');
+    return countWorkingDays(start_date, end_date, schedule[0], org_id);
+};
 
-    if (schedule.length === 0) {
-        throw new Error('No work schedule found for this department.');
-    }
-
-    const workDay = schedule[0];
-
+// Core day counting logic
+// Separated so both functions above share the same logic
+const countWorkingDays = async (start_date, end_date, workDay, org_id) => {
+    // Build day map from work schedule
+    // Saturday is taken directly from work_days table
+    // not from org_settings to avoid conflicts
     const dayMap = {
-        0: workDay.sunday,
-        1: workDay.monday,
-        2: workDay.tuesday,
-        3: workDay.wednesday,
-        4: workDay.thursday,
-        5: workDay.friday,
-        6: workDay.saturday
+        0: parseFloat(workDay.sunday || 0),
+        1: parseFloat(workDay.monday || 0),
+        2: parseFloat(workDay.tuesday || 0),
+        3: parseFloat(workDay.wednesday || 0),
+        4: parseFloat(workDay.thursday || 0),
+        5: parseFloat(workDay.friday || 0),
+        6: parseFloat(workDay.saturday || 0)
     };
 
-    const [holidays] = await db.query(
-        'SELECT holiday_date FROM public_holidays WHERE org_id = ?', [org_id]
-    );
+    // Get public holidays
+    let holidayDates = [];
+    if (org_id) {
+        const [allHolidays] = await db.query(
+            'SELECT * FROM public_holidays WHERE org_id = ?', [org_id]
+        );
 
-    const [settings] = await db.query(
-        'SELECT saturday_rule FROM org_settings WHERE org_id = ?', [org_id]
-    );
+        const startYear = new Date(start_date).getFullYear();
+        const endYear = new Date(end_date).getFullYear();
 
-    const saturdayRule = settings.length > 0 ? parseFloat(settings[0].saturday_rule) : 0;
+        allHolidays.forEach(h => {
+            const hDate = new Date(h.holiday_date);
+            const month = String(hDate.getMonth() + 1).padStart(2, '0');
+            const day = String(hDate.getDate()).padStart(2, '0');
 
-    const observedHolidays = holidays.map(h => {
-        const date = new Date(h.holiday_date);
-        const day = date.getDay();
-        if (day === 6) date.setDate(date.getDate() + 2);
-        if (day === 0) date.setDate(date.getDate() + 1);
+            if (h.is_recurring) {
+                for (let year = startYear; year <= endYear; year++) {
+                    holidayDates.push(`${year}-${month}-${day}`);
+                }
+            } else {
+                holidayDates.push(h.holiday_date);
+            }
+        });
+    }
+
+    // Shift Sat/Sun holidays to Monday
+    const observedHolidays = new Set(holidayDates.map(dateStr => {
+        const date = new Date(dateStr);
+        const dow = date.getDay();
+        if (dow === 6) date.setDate(date.getDate() + 2);
+        if (dow === 0) date.setDate(date.getDate() + 1);
         return date.toISOString().split('T')[0];
-    });
+    }));
 
+    // Count working days inclusive of both start and end date
     let totalDays = 0;
     const current = new Date(start_date);
     const end = new Date(end_date);
 
     while (current <= end) {
-        const dayOfWeek = current.getDay();
+        const dow = current.getDay();
         const dateStr = current.toISOString().split('T')[0];
-        const isHoliday = observedHolidays.includes(dateStr);
-        let dayValue = dayMap[dayOfWeek];
-        if (dayOfWeek === 6) dayValue = saturdayRule;
-        if (dayValue > 0 && !isHoliday) {
-            totalDays += parseFloat(dayValue);
+        const dayValue = dayMap[dow];
+        if (dayValue > 0 && !observedHolidays.has(dateStr)) {
+            totalDays += dayValue;
         }
         current.setDate(current.getDate() + 1);
     }
 
     return totalDays;
 };
-// Get staff profile
+
 const getMyProfile = async (req, res) => {
     const staff_id = req.user.id;
-
     try {
         const [staff] = await db.query(
             `SELECT s.id, s.staff_number, s.full_name, s.email, s.gender,
@@ -185,30 +133,19 @@ const getMyProfile = async (req, res) => {
              WHERE s.id = ?`,
             [staff_id]
         );
-
-        if (staff.length === 0) {
-            return res.status(404).json({ message: 'Staff not found.' });
-        }
-
+        if (staff.length === 0) return res.status(404).json({ message: 'Staff not found.' });
         res.status(200).json({ profile: staff[0] });
-
     } catch (err) {
         res.status(500).json({ message: 'Server error.', error: err.message });
     }
 };
 
-// Get leave balances for current year
 const getMyLeaveBalances = async (req, res) => {
     const staff_id = req.user.id;
     const currentYear = new Date().getFullYear();
-
     try {
-        // Get staff gender first
-        const [staffData] = await db.query(
-            'SELECT gender FROM staff WHERE id = ?', [staff_id]
-        );
+        const [staffData] = await db.query('SELECT gender FROM staff WHERE id = ?', [staff_id]);
         const gender = staffData[0].gender;
-
         const [balances] = await db.query(
             `SELECT lb.id, lb.total_days, lb.used_days, lb.remaining_days,
                     lt.name AS leave_type, lt.gender_restriction
@@ -219,27 +156,18 @@ const getMyLeaveBalances = async (req, res) => {
              AND lt.is_active = 1`,
             [staff_id, currentYear, gender]
         );
-
         res.status(200).json({ balances });
     } catch (err) {
         res.status(500).json({ message: 'Server error.', error: err.message });
     }
 };
 
-// Get leave types available for this staff member
-// Filtered by gender restriction
 const getAvailableLeaveTypes = async (req, res) => {
     const staff_id = req.user.id;
     const org_id = req.user.org_id;
-
     try {
-        const [staff] = await db.query(
-            'SELECT gender FROM staff WHERE id = ?',
-            [staff_id]
-        );
-
+        const [staff] = await db.query('SELECT gender FROM staff WHERE id = ?', [staff_id]);
         const gender = staff[0].gender;
-
         const [leaveTypes] = await db.query(
             `SELECT * FROM leave_types 
              WHERE org_id = ?
@@ -247,20 +175,16 @@ const getAvailableLeaveTypes = async (req, res) => {
              AND is_active = 1`,
             [org_id, gender]
         );
-
         res.status(200).json({ leave_types: leaveTypes });
-
     } catch (err) {
         res.status(500).json({ message: 'Server error.', error: err.message });
     }
 };
 
-// Get all staff in same department for acting staff selection
 const getDeptStaffForActing = async (req, res) => {
     const staff_id = req.user.id;
     const org_id = req.user.org_id;
     const department_id = req.user.department_id;
-
     try {
         const [staff] = await db.query(
             `SELECT id, full_name, staff_number
@@ -270,46 +194,88 @@ const getDeptStaffForActing = async (req, res) => {
              ORDER BY full_name`,
             [org_id, department_id, staff_id]
         );
-
         res.status(200).json({ staff });
-
     } catch (err) {
         res.status(500).json({ message: 'Server error.', error: err.message });
     }
 };
 
-// Apply for leave
+// Calculate days preview for frontend
+// Returns exact working days for a date range
+const calculateDaysPreview = async (req, res) => {
+    const staff_id = req.user.id;
+    const org_id = req.user.org_id;
+    const section_id = req.user.section_id;
+    const department_id = req.user.department_id;
+    const { start_date, end_date } = req.query;
+
+    if (!start_date || !end_date) {
+        return res.status(400).json({ message: 'Start and end date required.' });
+    }
+
+    // Block past dates
+    const today = new Date().toISOString().split('T')[0];
+    if (start_date < today) {
+        return res.status(400).json({ message: 'Start date cannot be in the past.' });
+    }
+
+    if (end_date < start_date) {
+        return res.status(400).json({ message: 'End date cannot be before start date.' });
+    }
+
+    try {
+        let days;
+        if (section_id) {
+            days = await calculateWorkingDays(start_date, end_date, section_id);
+        } else {
+            days = await calculateWorkingDaysForDept(start_date, end_date, department_id, org_id);
+        }
+        res.status(200).json({ working_days: days });
+    } catch (err) {
+        res.status(400).json({ message: 'No work schedule found. Contact your admin.' });
+    }
+};
+
 const applyForLeave = async (req, res) => {
     const staff_id = req.user.id;
     const org_id = req.user.org_id;
     const section_id = req.user.section_id;
     const role_id = req.user.role_id;
+    const department_id = req.user.department_id;
     const { leave_type_id, start_date, end_date, reason, acting_staff_id } = req.body;
     const currentYear = new Date().getFullYear();
 
+    // Block past dates
+    const today = new Date().toISOString().split('T')[0];
+    if (start_date < today) {
+        return res.status(400).json({ message: 'Start date cannot be in the past.' });
+    }
+
+    if (end_date < start_date) {
+        return res.status(400).json({ message: 'End date cannot be before start date.' });
+    }
+
     try {
-        // Check for overlapping approved leaves
+        // Check overlapping approved leaves
         const [overlapping] = await db.query(
             `SELECT * FROM leave_applications
              WHERE staff_id = ? AND status = 'approved'
              AND start_date <= ? AND end_date >= ?`,
             [staff_id, end_date, start_date]
         );
-
         if (overlapping.length > 0) {
             return res.status(400).json({
                 message: 'You already have an approved leave overlapping these dates. Use Leave Switch instead.'
             });
         }
 
-        // Check for overlapping pending leaves
+        // Check overlapping pending leaves
         const [pendingOverlap] = await db.query(
             `SELECT * FROM leave_applications
              WHERE staff_id = ? AND status = 'pending'
              AND start_date <= ? AND end_date >= ?`,
             [staff_id, end_date, start_date]
         );
-
         if (pendingOverlap.length > 0) {
             return res.status(400).json({
                 message: 'You already have a pending leave overlapping these dates.'
@@ -322,7 +288,6 @@ const applyForLeave = async (req, res) => {
              WHERE staff_id = ? AND leave_type_id = ? AND year = ?`,
             [staff_id, leave_type_id, currentYear]
         );
-
         if (balance.length === 0 || balance[0].remaining_days <= 0) {
             return res.status(400).json({ message: 'No remaining leave days for this leave type.' });
         }
@@ -335,58 +300,51 @@ const applyForLeave = async (req, res) => {
             [staff_id, leave_type_id]
         );
 
-        if (lastApplication.length > 0) {
-            const [entitlement] = await db.query(
-                'SELECT * FROM leave_entitlements WHERE leave_type_id = ? AND role_id = ? AND org_id = ?',
-                [leave_type_id, role_id, org_id]
-            );
-
-            if (entitlement.length > 0) {
-                const minDays = entitlement[0].min_days_before_reapply;
-                if (minDays > 0) {
-                    const lastEndDate = new Date(lastApplication[0].end_date);
-                    const today = new Date();
-                    const daysSince = Math.floor((today - lastEndDate) / (1000 * 60 * 60 * 24));
-
-                    if (daysSince < minDays) {
-                        const daysLeft = minDays - daysSince;
-                        return res.status(400).json({
-                            message: `You must wait ${daysLeft} more days before reapplying for this leave type.`
-                        });
-                    }
-                }
-            }
-        }
-
-        // Check max concurrent staff on leave
         const [entitlement] = await db.query(
             'SELECT * FROM leave_entitlements WHERE leave_type_id = ? AND role_id = ? AND org_id = ?',
             [leave_type_id, role_id, org_id]
         );
 
+        if (lastApplication.length > 0 && entitlement.length > 0) {
+            const minDays = entitlement[0].min_days_before_reapply;
+            if (minDays > 0) {
+                const lastEndDate = new Date(lastApplication[0].end_date);
+                const todayDate = new Date();
+                const daysSince = Math.floor((todayDate - lastEndDate) / (1000 * 60 * 60 * 24));
+                if (daysSince < minDays) {
+                    const daysLeft = minDays - daysSince;
+                    return res.status(400).json({
+                        message: `You must wait ${daysLeft} more days before reapplying for this leave type.`
+                    });
+                }
+            }
+        }
+
+        // Check max concurrent staff on leave
         if (entitlement.length > 0) {
             const maxConcurrent = entitlement[0].max_concurrent_staff;
+            const checkId = section_id || department_id;
+            const checkField = section_id ? 's.section_id' : 's.department_id';
 
             const [currentOnLeave] = await db.query(
                 `SELECT COUNT(*) as count FROM leave_applications la
                  JOIN staff s ON la.staff_id = s.id
-                 WHERE s.section_id = ? AND la.leave_type_id = ?
+                 WHERE ${checkField} = ? AND la.leave_type_id = ?
                  AND la.status = 'approved'
                  AND la.start_date <= CURDATE()
                  AND la.end_date >= CURDATE()`,
-                [section_id, leave_type_id]
+                [checkId, leave_type_id]
             );
 
             if (currentOnLeave[0].count >= maxConcurrent) {
                 const [earliest] = await db.query(
                     `SELECT MIN(end_date) as earliest_date FROM leave_applications la
                      JOIN staff s ON la.staff_id = s.id
-                     WHERE s.section_id = ? AND la.leave_type_id = ?
+                     WHERE ${checkField} = ? AND la.leave_type_id = ?
                      AND la.status = 'approved'
                      AND la.end_date >= CURDATE()`,
-                    [section_id, leave_type_id]
+                    [checkId, leave_type_id]
                 );
-
                 return res.status(400).json({
                     message: `Maximum staff on leave reached. Earliest you can apply is ${earliest[0].earliest_date}.`
                 });
@@ -394,54 +352,37 @@ const applyForLeave = async (req, res) => {
         }
 
         // Calculate working days
-// If staff has no section use department level schedule
-let workSectionId = section_id;
-
-// If no section find any section in the department that has a work schedule
-if (!workSectionId) {
-    const [deptSections] = await db.query(
-        `SELECT s.id FROM sections s
-         JOIN work_days wd ON wd.section_id = s.id
-         WHERE s.department_id = ? AND s.org_id = ?
-         LIMIT 1`,
-        [req.user.department_id, org_id]
-    );
-
-    if (deptSections.length > 0) {
-        workSectionId = deptSections[0].id;
-    } else {
-        // Try department level work days
-        const [deptWorkDays] = await db.query(
-            `SELECT id FROM work_days 
-             WHERE department_id = ? AND section_id IS NULL`,
-            [req.user.department_id]
-        );
-
-        if (deptWorkDays.length === 0) {
-            return res.status(400).json({ 
-                message: 'No work schedule found for your department. Contact your admin.' 
+        let totalWorkingDays;
+        try {
+            if (section_id) {
+                totalWorkingDays = await calculateWorkingDays(start_date, end_date, section_id);
+            } else {
+                totalWorkingDays = await calculateWorkingDaysForDept(start_date, end_date, department_id, org_id);
+            }
+        } catch (err) {
+            return res.status(400).json({
+                message: 'No work schedule found. Contact your admin to set up work days.'
             });
         }
-        // Use department_id directly
-        workSectionId = null;
-    }
-}
 
-let totalWorkingDays;
-try {
-    if (workSectionId) {
-        totalWorkingDays = await calculateWorkingDays(start_date, end_date, workSectionId);
-    } else {
-        // Calculate using department schedule directly
-        totalWorkingDays = await calculateWorkingDaysForDept(start_date, end_date, req.user.department_id, org_id);
-    }
-} catch (err) {
-    return res.status(400).json({ 
-        message: 'No work schedule found. Contact your admin to set up work days.' 
-    });
-}
+        if (totalWorkingDays <= 0) {
+            return res.status(400).json({ message: 'No working days in selected date range.' });
+        }
 
-        // Submit application
+        // Check requested days dont exceed remaining balance
+        if (totalWorkingDays > balance[0].remaining_days) {
+            return res.status(400).json({
+                message: `You only have ${balance[0].remaining_days} days remaining but requested ${totalWorkingDays} days.`
+            });
+        }
+
+        // Check requested days dont exceed max entitlement
+        if (entitlement.length > 0 && totalWorkingDays > entitlement[0].max_days_per_year) {
+            return res.status(400).json({
+                message: `This leave type allows a maximum of ${entitlement[0].max_days_per_year} days per year.`
+            });
+        }
+
         await db.query(
             `INSERT INTO leave_applications
              (org_id, staff_id, leave_type_id, acting_staff_id,
@@ -452,19 +393,16 @@ try {
         );
 
         res.status(201).json({
-            message: 'Leave application submitted successfully. Waiting for admin approval.',
+            message: 'Leave application submitted successfully.',
             total_working_days: totalWorkingDays
         });
-
     } catch (err) {
         res.status(500).json({ message: 'Server error.', error: err.message });
     }
 };
 
-// Get all my applications
 const getMyApplications = async (req, res) => {
     const staff_id = req.user.id;
-
     try {
         const [applications] = await db.query(
             `SELECT la.id, la.start_date, la.end_date, la.total_working_days,
@@ -478,66 +416,55 @@ const getMyApplications = async (req, res) => {
              ORDER BY la.applied_at DESC`,
             [staff_id]
         );
-
         res.status(200).json({ applications });
-
     } catch (err) {
         res.status(500).json({ message: 'Server error.', error: err.message });
     }
 };
 
-// Cancel a pending application
 const cancelApplication = async (req, res) => {
     const staff_id = req.user.id;
     const { application_id } = req.params;
-
     try {
         const [application] = await db.query(
             'SELECT * FROM leave_applications WHERE id = ? AND staff_id = ?',
             [application_id, staff_id]
         );
-
         if (application.length === 0) {
             return res.status(404).json({ message: 'Application not found.' });
         }
-
         if (application[0].status !== 'pending') {
             return res.status(400).json({ message: 'Only pending applications can be cancelled.' });
         }
-
         await db.query(
             'UPDATE leave_applications SET status = ? WHERE id = ?',
             ['cancelled', application_id]
         );
-
         res.status(200).json({ message: 'Application cancelled successfully.' });
-
     } catch (err) {
         res.status(500).json({ message: 'Server error.', error: err.message });
     }
 };
 
-// Request leave switch
 const requestLeaveSwitch = async (req, res) => {
     const staff_id = req.user.id;
     const org_id = req.user.org_id;
+    const section_id = req.user.section_id;
+    const department_id = req.user.department_id;
     const { original_application_id, new_leave_type_id, switch_date, new_end_date, reason } = req.body;
 
     try {
-        // Verify original application belongs to staff and is approved
         const [original] = await db.query(
             `SELECT * FROM leave_applications
              WHERE id = ? AND staff_id = ? AND status = 'approved'`,
             [original_application_id, staff_id]
         );
-
         if (original.length === 0) {
             return res.status(404).json({ message: 'Approved application not found.' });
         }
 
         const orig = original[0];
 
-        // Validate switch date is within original leave dates
         if (switch_date < orig.start_date || switch_date > orig.end_date) {
             return res.status(400).json({
                 message: `Switch date must be between ${orig.start_date} and ${orig.end_date}.`
@@ -545,37 +472,35 @@ const requestLeaveSwitch = async (req, res) => {
         }
 
         if (new_end_date < switch_date) {
-            return res.status(400).json({
-                message: 'New end date cannot be before switch date.'
-            });
+            return res.status(400).json({ message: 'New end date cannot be before switch date.' });
         }
 
-        // Block if a pending switch already exists for this application
         const [existingSwitch] = await db.query(
             `SELECT * FROM leave_switches
              WHERE original_application_id = ? AND status = 'pending'`,
             [original_application_id]
         );
-
         if (existingSwitch.length > 0) {
             return res.status(400).json({
                 message: 'A pending switch request already exists for this application.'
             });
         }
 
-        // Calculate working days for new leave
         let newWorkingDays;
-if (req.user.section_id) {
-    newWorkingDays = await calculateWorkingDays(switch_date, new_end_date, req.user.section_id);
-} else {
-    newWorkingDays = await calculateWorkingDaysForDept(switch_date, new_end_date, req.user.department_id, org_id);
-}
+        try {
+            if (section_id) {
+                newWorkingDays = await calculateWorkingDays(switch_date, new_end_date, section_id);
+            } else {
+                newWorkingDays = await calculateWorkingDaysForDept(switch_date, new_end_date, department_id, org_id);
+            }
+        } catch (err) {
+            return res.status(400).json({ message: 'No work schedule found. Contact your admin.' });
+        }
 
         if (newWorkingDays <= 0) {
             return res.status(400).json({ message: 'No working days in selected date range.' });
         }
 
-        // Check balance for new leave type
         const currentYear = new Date().getFullYear();
         const [balance] = await db.query(
             `SELECT * FROM leave_balances
@@ -590,12 +515,10 @@ if (req.user.section_id) {
             });
         }
 
-        // Old leave ends the day before switch date
         const oldLeaveEndObj = new Date(switch_date);
         oldLeaveEndObj.setDate(oldLeaveEndObj.getDate() - 1);
         const oldLeaveNewEndDate = oldLeaveEndObj.toISOString().split('T')[0];
 
-        // Create new pending application starting on switch date
         const [newApp] = await db.query(
             `INSERT INTO leave_applications
              (org_id, staff_id, leave_type_id, start_date, end_date,
@@ -605,8 +528,6 @@ if (req.user.section_id) {
             switch_date, new_end_date, newWorkingDays, reason]
         );
 
-        // Create switch request
-        // switch_date column stores the last day of original leave
         await db.query(
             `INSERT INTO leave_switches
              (org_id, original_application_id, new_application_id, switch_date, reason)
@@ -618,7 +539,6 @@ if (req.user.section_id) {
             message: 'Leave switch request submitted. Waiting for admin approval.',
             new_working_days: newWorkingDays
         });
-
     } catch (err) {
         res.status(500).json({ message: 'Server error.', error: err.message });
     }
@@ -631,6 +551,7 @@ module.exports = {
     getMyLeaveBalances,
     getAvailableLeaveTypes,
     getDeptStaffForActing,
+    calculateDaysPreview,
     applyForLeave,
     getMyApplications,
     cancelApplication,

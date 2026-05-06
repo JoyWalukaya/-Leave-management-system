@@ -97,10 +97,7 @@ async function loadSettings() {
     const s = data.settings;
     document.getElementById('year-reset-month').value = s.year_reset_month || 1;
     document.getElementById('year-reset-day').value = s.year_reset_day || 1;
-    document.getElementById('saturday-rule').value = s.saturday_rule || 0;
-    document.getElementById('carry-forward-days').value = s.carry_forward_days || 0;
-    document.getElementById('carry-forward-expiry').value = s.carry_forward_expiry_months || 3;
-    document.getElementById('allow-leave-switch').value = s.allow_leave_switch || 1;
+    document.getElementById('allow-leave-switch').value = s.allow_leave_switch !== undefined ? s.allow_leave_switch : 1;
     document.getElementById('leave-switch-notice').value = s.leave_switch_notice_days || 0;
 }
 
@@ -108,9 +105,6 @@ async function saveSettings() {
     const { ok, data } = await apiPost('/org-admin/settings', {
         year_reset_month: parseInt(document.getElementById('year-reset-month').value),
         year_reset_day: parseInt(document.getElementById('year-reset-day').value),
-        saturday_rule: parseFloat(document.getElementById('saturday-rule').value),
-        carry_forward_days: parseInt(document.getElementById('carry-forward-days').value),
-        carry_forward_expiry_months: parseInt(document.getElementById('carry-forward-expiry').value),
         allow_leave_switch: parseInt(document.getElementById('allow-leave-switch').value),
         leave_switch_notice_days: parseInt(document.getElementById('leave-switch-notice').value),
         setup_complete: 1
@@ -464,13 +458,18 @@ async function loadHolidays() {
     if (!data) return;
     const tbody = document.getElementById('holidays-table');
     if (data.holidays.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-secondary)">No holidays yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-secondary)">No holidays yet.</td></tr>';
         return;
     }
     tbody.innerHTML = data.holidays.map(h => `
         <tr>
             <td>${h.name}</td>
             <td>${h.holiday_date}</td>
+            <td>
+                <span class="badge ${h.is_recurring ? 'badge-approved' : 'badge-pending'}">
+                    ${h.is_recurring ? 'Recurring' : 'One-time'}
+                </span>
+            </td>
             <td>
                 <button class="btn btn-danger" style="padding:0.3rem 0.8rem; font-size:0.8rem"
                     onclick="deleteHoliday(${h.id})">Delete</button>
@@ -482,8 +481,12 @@ async function loadHolidays() {
 async function createHoliday() {
     const name = document.getElementById('holiday-name').value.trim();
     const holiday_date = document.getElementById('holiday-date').value;
-    if (!name || !holiday_date) { showAlert('holiday-alert', 'Name and date are required.', 'error'); return; }
-    const { ok, data } = await apiPost('/org-admin/public-holidays', { name, holiday_date });
+    const is_recurring = document.getElementById('holiday-recurring').value;
+    if (!name || !holiday_date) {
+        showAlert('holiday-alert', 'Name and date are required.', 'error');
+        return;
+    }
+    const { ok, data } = await apiPost('/org-admin/public-holidays', { name, holiday_date, is_recurring });
     if (ok) {
         showAlert('holiday-alert', 'Holiday added.', 'success');
         document.getElementById('holiday-name').value = '';

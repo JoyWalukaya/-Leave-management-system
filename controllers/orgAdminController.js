@@ -52,28 +52,22 @@ const getOrgSettings = async (req, res) => {
 const saveOrgSettings = async (req, res) => {
     const org_id = req.user.org_id;
     const {
-        year_reset_month, year_reset_day, saturday_rule,
-        carry_forward_days, carry_forward_expiry_months,
+        year_reset_month, year_reset_day,
         allow_leave_switch, leave_switch_notice_days, setup_complete
     } = req.body;
     try {
         await db.query(
             `INSERT INTO org_settings 
-             (org_id, year_reset_month, year_reset_day, saturday_rule,
-              carry_forward_days, carry_forward_expiry_months,
+             (org_id, year_reset_month, year_reset_day,
               allow_leave_switch, leave_switch_notice_days, setup_complete)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             VALUES (?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE
              year_reset_month = VALUES(year_reset_month),
              year_reset_day = VALUES(year_reset_day),
-             saturday_rule = VALUES(saturday_rule),
-             carry_forward_days = VALUES(carry_forward_days),
-             carry_forward_expiry_months = VALUES(carry_forward_expiry_months),
              allow_leave_switch = VALUES(allow_leave_switch),
              leave_switch_notice_days = VALUES(leave_switch_notice_days),
              setup_complete = VALUES(setup_complete)`,
-            [org_id, year_reset_month, year_reset_day, saturday_rule,
-            carry_forward_days, carry_forward_expiry_months,
+            [org_id, year_reset_month, year_reset_day,
             allow_leave_switch, leave_switch_notice_days, setup_complete]
         );
         res.status(200).json({ message: 'Settings saved successfully.' });
@@ -412,14 +406,14 @@ const getPublicHolidays = async (req, res) => {
 
 const createPublicHoliday = async (req, res) => {
     const org_id = req.user.org_id;
-    const { name, holiday_date } = req.body;
+    const { name, holiday_date, is_recurring } = req.body;
     if (!name || !holiday_date) {
         return res.status(400).json({ message: 'Name and date are required.' });
     }
     try {
         await db.query(
-            'INSERT INTO public_holidays (org_id, name, holiday_date) VALUES (?, ?, ?)',
-            [org_id, name, holiday_date]
+            'INSERT INTO public_holidays (org_id, name, holiday_date, is_recurring) VALUES (?, ?, ?, ?)',
+            [org_id, name, holiday_date, is_recurring !== undefined ? is_recurring : 1]
         );
         res.status(201).json({ message: 'Public holiday created successfully.' });
     } catch (err) {

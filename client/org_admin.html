@@ -45,51 +45,35 @@
         <div class="alert" id="main-alert"></div>
 
         <!-- SETTINGS TAB -->
-        <div class="tab-content active" id="tab-settings">
-            <div class="card">
-                <div class="card-title">Organization Settings</div>
-                <div class="alert" id="settings-alert"></div>
-                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
-                    <div class="form-group">
-                        <label>Year Reset Month (1-12)</label>
-                        <input type="number" id="year-reset-month" min="1" max="12" placeholder="1">
-                    </div>
-                    <div class="form-group">
-                        <label>Year Reset Day (1-31)</label>
-                        <input type="number" id="year-reset-day" min="1" max="31" placeholder="1">
-                    </div>
-                    <div class="form-group">
-                        <label>Saturday Rule</label>
-                        <select id="saturday-rule">
-                            <option value="0">Not a working day</option>
-                            <option value="0.5">Half day</option>
-                            <option value="1">Full day</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Carry Forward Days (Annual Leave)</label>
-                        <input type="number" id="carry-forward-days" min="0" placeholder="0">
-                    </div>
-                    <div class="form-group">
-                        <label>Carry Forward Expiry (Months)</label>
-                        <input type="number" id="carry-forward-expiry" min="0" placeholder="3">
-                    </div>
-                    <div class="form-group">
-                        <label>Allow Leave Switch</label>
-                        <select id="allow-leave-switch">
-                            <option value="1">Yes</option>
-                            <option value="0">No</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Leave Switch Notice Days</label>
-                        <input type="number" id="leave-switch-notice" min="0" placeholder="0">
-                    </div>
-                </div>
-                <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+       <!-- SETTINGS TAB -->
+<div class="tab-content active" id="tab-settings">
+    <div class="card">
+        <div class="card-title">Organization Settings</div>
+        <div class="alert" id="settings-alert"></div>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
+            <div class="form-group">
+                <label>Year Reset Month (1-12)</label>
+                <input type="number" id="year-reset-month" min="1" max="12" placeholder="1">
+            </div>
+            <div class="form-group">
+                <label>Year Reset Day (1-31)</label>
+                <input type="number" id="year-reset-day" min="1" max="31" placeholder="1">
+            </div>
+            <div class="form-group">
+                <label>Allow Leave Switch</label>
+                <select id="allow-leave-switch">
+                    <option value="1">Yes</option>
+                    <option value="0">No</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Leave Switch Notice Days</label>
+                <input type="number" id="leave-switch-notice" min="0" placeholder="0">
             </div>
         </div>
-
+        <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+    </div>
+</div>
         <!-- DEPARTMENTS TAB -->
         <div class="tab-content" id="tab-departments">
             <div class="card">
@@ -395,41 +379,48 @@
                 </div>
             </div>
         </div>
-
-        <!-- HOLIDAYS TAB -->
-        <div class="tab-content" id="tab-holidays">
-            <div class="card">
-                <div class="card-title">Public Holidays</div>
-                <div class="alert" id="holiday-alert"></div>
-                <div style="display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap;">
-                    <div class="form-group" style="flex:1; min-width:200px;">
-                        <label>Holiday Name</label>
-                        <input type="text" id="holiday-name" placeholder="e.g. Christmas Day">
-                    </div>
-                    <div class="form-group" style="flex:1; min-width:200px;">
-                        <label>Date</label>
-                        <input type="date" id="holiday-date">
-                    </div>
-                    <div style="display:flex; align-items:flex-end;">
-                        <button class="btn btn-primary" onclick="createHoliday()">Add Holiday</button>
-                    </div>
-                </div>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Date</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="holidays-table">
-                            <tr><td colspan="3" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+<!-- HOLIDAYS TAB -->
+<div class="tab-content" id="tab-holidays">
+    <div class="card">
+        <div class="card-title">Public Holidays</div>
+        <div class="alert" id="holiday-alert"></div>
+        <div style="display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap; align-items:flex-end;">
+            <div class="form-group" style="flex:1; min-width:200px;">
+                <label>Holiday Name</label>
+                <input type="text" id="holiday-name" placeholder="e.g. Christmas Day">
+            </div>
+            <div class="form-group" style="flex:1; min-width:200px;">
+                <label>Date</label>
+                <input type="date" id="holiday-date">
+            </div>
+            <div class="form-group" style="flex:1; min-width:200px;">
+                <label>Type</label>
+                <select id="holiday-recurring">
+                    <option value="1">Recurring (every year)</option>
+                    <option value="0">One-time (specific year only)</option>
+                </select>
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+                <button class="btn btn-primary" onclick="createHoliday()">Add Holiday</button>
             </div>
         </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="holidays-table">
+                    <tr><td colspan="4" style="text-align:center; color:var(--text-secondary)">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
         <!-- DEPT ADMINS TAB -->
         <div class="tab-content" id="tab-dept-admins">

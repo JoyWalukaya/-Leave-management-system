@@ -1,12 +1,10 @@
 const jwt = require('jsonwebtoken');
 
-// ============================
 // VERIFY TOKEN
 // This runs on every protected route
 // It checks the JWT token in the
 // request header and decodes it
 // to get the user's details
-// ============================
 const verifyToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -24,11 +22,9 @@ const verifyToken = (req, res, next) => {
     });
 };
 
-// ============================
 // VERIFY SUPER ADMIN
 // Only allows super admins
 // to access the route
-// ============================
 const verifySuperAdmin = (req, res, next) => {
     verifyToken(req, res, () => {
         if (req.user.system_role !== 'super_admin') {
@@ -38,11 +34,9 @@ const verifySuperAdmin = (req, res, next) => {
     });
 };
 
-// ============================
 // VERIFY ORG ADMIN
 // Only allows org admins
 // to access the route
-// ============================
 const verifyOrgAdmin = (req, res, next) => {
     verifyToken(req, res, () => {
         if (req.user.system_role !== 'org_admin') {
@@ -52,11 +46,9 @@ const verifyOrgAdmin = (req, res, next) => {
     });
 };
 
-// ============================
 // VERIFY DEPT ADMIN
 // Only allows department admins
 // to access the route
-// ============================
 const verifyDeptAdmin = (req, res, next) => {
     verifyToken(req, res, () => {
         if (req.user.system_role !== 'dept_admin') {
@@ -66,11 +58,9 @@ const verifyDeptAdmin = (req, res, next) => {
     });
 };
 
-// ============================
 // VERIFY STAFF
 // Only allows staff members
 // to access the route
-// ============================
 const verifyStaff = (req, res, next) => {
     verifyToken(req, res, () => {
         if (req.user.system_role !== 'staff') {

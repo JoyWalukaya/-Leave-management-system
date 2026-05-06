@@ -1,6 +1,11 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const { sendStaffCredentials } = require('../services/emailService');
+const { calculateWorkingDays, calculateWorkingDaysForDept } = require('./staffController');
+
+const isValidEmail = (email) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+};
 
 const generateUsername = (full_name) => {
     return full_name.toLowerCase().replace(/\s+/g, '.');
@@ -28,9 +33,7 @@ const getDeptAdminProfile = async (req, res) => {
              WHERE da.id = ?`,
             [id]
         );
-        if (admin.length === 0) {
-            return res.status(404).json({ message: 'Profile not found.' });
-        }
+        if (admin.length === 0) return res.status(404).json({ message: 'Profile not found.' });
         res.status(200).json({ profile: admin[0] });
     } catch (err) {
         res.status(500).json({ message: 'Server error.', error: err.message });
@@ -94,6 +97,10 @@ const createStaff = async (req, res) => {
         return res.status(400).json({ message: 'Staff number, full name, gender, role and date joined are required.' });
     }
 
+    if (email && !isValidEmail(email)) {
+        return res.status(400).json({ message: 'Please enter a valid email address.' });
+    }
+
     try {
         const [existing] = await db.query('SELECT * FROM staff WHERE staff_number = ?', [staff_number]);
         if (existing.length > 0) {
@@ -128,13 +135,17 @@ const updateStaff = async (req, res) => {
     const { staff_id } = req.params;
     const { staff_number, full_name, email, gender, role_id, section_id, date_joined } = req.body;
 
+    if (email && !isValidEmail(email)) {
+        return res.status(400).json({ message: 'Please enter a valid email address.' });
+    }
+
     try {
         await db.query(
             `UPDATE staff
              SET staff_number = ?, full_name = ?, email = ?,
                  gender = ?, role_id = ?, section_id = ?, date_joined = ?
              WHERE id = ? AND org_id = ? AND department_id = ?`,
-            [staff_number, full_name, email, gender, role_id,
+            [staff_number, full_name, email || null, gender, role_id,
             section_id || null, date_joined, staff_id, org_id, department_id]
         );
         res.status(200).json({ message: 'Staff updated successfully.' });
@@ -168,9 +179,7 @@ const deleteStaff = async (req, res) => {
             'SELECT * FROM staff WHERE id = ? AND org_id = ? AND department_id = ?',
             [staff_id, org_id, department_id]
         );
-        if (staff.length === 0) {
-            return res.status(404).json({ message: 'Staff not found.' });
-        }
+        if (staff.length === 0) return res.status(404).json({ message: 'Staff not found.' });
         if (staff[0].status !== 'inactive') {
             return res.status(400).json({ message: 'Deactivate the staff member before deleting.' });
         }
@@ -196,9 +205,7 @@ const sendStaffEmail = async (req, res) => {
             [staff_id, org_id, department_id]
         );
 
-        if (staffData.length === 0) {
-            return res.status(404).json({ message: 'Staff not found.' });
-        }
+        if (staffData.length === 0) return res.status(404).json({ message: 'Staff not found.' });
 
         const staff = staffData[0];
 
@@ -223,39 +230,36 @@ const sendStaffEmail = async (req, res) => {
             [username, password_hash, staff_id]
         );
 
-        await sendStaffCredentials(
-    staff.email, staff.full_name, staff.org_name,
-    staff.dept_name, staff.section_name, username, plainPassword
-);
-
-// Create leave balances if they don't exist yet
-const currentYear = new Date().getFullYear();
-
-const [entitlements] = await db.query(
-    'SELECT * FROM leave_entitlements WHERE org_id = ? AND role_id = ?',
-    [org_id, staff.role_id]
-);
-
-for (const entitlement of entitlements) {
-    // Check if balance already exists to avoid duplicates
-    const [existingBalance] = await db.query(
-        `SELECT * FROM leave_balances 
-         WHERE staff_id = ? AND leave_type_id = ? AND year = ?`,
-        [staff_id, entitlement.leave_type_id, currentYear]
-    );
-
-    if (existingBalance.length === 0) {
-        await db.query(
-            `INSERT INTO leave_balances 
-             (org_id, staff_id, leave_type_id, year, total_days, used_days, remaining_days)
-             VALUES (?, ?, ?, ?, ?, 0, ?)`,
-            [org_id, staff_id, entitlement.leave_type_id, currentYear,
-            entitlement.max_days_per_year, entitlement.max_days_per_year]
+        // Create leave balances if they dont exist yet
+        const currentYear = new Date().getFullYear();
+        const [entitlements] = await db.query(
+            'SELECT * FROM leave_entitlements WHERE org_id = ? AND role_id = ?',
+            [org_id, staff.role_id]
         );
-    }
-}
 
-res.status(200).json({ message: 'Login credentials sent and leave balances created successfully.' });
+        for (const entitlement of entitlements) {
+            const [existingBalance] = await db.query(
+                `SELECT * FROM leave_balances 
+                 WHERE staff_id = ? AND leave_type_id = ? AND year = ?`,
+                [staff_id, entitlement.leave_type_id, currentYear]
+            );
+            if (existingBalance.length === 0) {
+                await db.query(
+                    `INSERT INTO leave_balances 
+                     (org_id, staff_id, leave_type_id, year, total_days, used_days, remaining_days)
+                     VALUES (?, ?, ?, ?, ?, 0, ?)`,
+                    [org_id, staff_id, entitlement.leave_type_id, currentYear,
+                    entitlement.max_days_per_year, entitlement.max_days_per_year]
+                );
+            }
+        }
+
+        await sendStaffCredentials(
+            staff.email, staff.full_name, staff.org_name,
+            staff.dept_name, staff.section_name, username, plainPassword
+        );
+
+        res.status(200).json({ message: 'Login credentials sent successfully.' });
     } catch (err) {
         res.status(500).json({ message: 'Server error.', error: err.message });
     }
@@ -308,10 +312,7 @@ const reviewApplication = async (req, res) => {
             [application_id, org_id, department_id]
         );
 
-        if (application.length === 0) {
-            return res.status(404).json({ message: 'Application not found.' });
-        }
-
+        if (application.length === 0) return res.status(404).json({ message: 'Application not found.' });
         if (application[0].status !== 'pending') {
             return res.status(400).json({ message: 'Application has already been reviewed.' });
         }
@@ -319,7 +320,6 @@ const reviewApplication = async (req, res) => {
         const [isSwitch] = await db.query(
             'SELECT * FROM leave_switches WHERE new_application_id = ?', [application_id]
         );
-
         if (isSwitch.length > 0) {
             return res.status(400).json({
                 message: 'This is a switch application. Please review it from the Leave Switches tab.'
@@ -446,10 +446,7 @@ const reviewLeaveSwitch = async (req, res) => {
             [switch_id, org_id, department_id]
         );
 
-        if (switchRequest.length === 0) {
-            return res.status(404).json({ message: 'Switch request not found.' });
-        }
-
+        if (switchRequest.length === 0) return res.status(404).json({ message: 'Switch request not found.' });
         if (switchRequest[0].status !== 'pending') {
             return res.status(400).json({ message: 'Switch request already reviewed.' });
         }
@@ -476,41 +473,70 @@ const reviewLeaveSwitch = async (req, res) => {
             const original = originalApp[0];
             const newApplication = newApp[0];
 
+            // Get staff details for working days calculation
             const [staffData] = await db.query(
-                'SELECT section_id FROM staff WHERE id = ?', [original.staff_id]
+                'SELECT section_id, department_id, org_id FROM staff WHERE id = ?',
+                [original.staff_id]
             );
 
-            const { calculateWorkingDays } = require('./staffController');
-            const section_id = staffData[0].section_id;
+            const staff_section_id = staffData[0].section_id;
+            const staff_dept_id = staffData[0].department_id;
+            const staff_org_id = staffData[0].org_id;
 
-            const daysActuallyUsed = await calculateWorkingDays(
-                original.start_date, sw.switch_date, section_id
-            );
+            // sw.switch_date = last day of original leave
+            // Calculate days actually used in original leave
+            // from start_date to switch_date (inclusive)
+            let daysActuallyUsed;
+            try {
+                if (staff_section_id) {
+                    daysActuallyUsed = await calculateWorkingDays(
+                        original.start_date, sw.switch_date, staff_section_id
+                    );
+                } else {
+                    daysActuallyUsed = await calculateWorkingDaysForDept(
+                        original.start_date, sw.switch_date, staff_dept_id, staff_org_id
+                    );
+                }
+            } catch (err) {
+                daysActuallyUsed = parseFloat(original.total_working_days);
+            }
 
+            // Days to return to original leave type balance
             const daysToReturn = parseFloat(original.total_working_days) - daysActuallyUsed;
 
+            // Shorten original leave to end on switch_date
             await db.query(
-                'UPDATE leave_applications SET end_date = ?, total_working_days = ? WHERE id = ?',
+                `UPDATE leave_applications 
+                 SET end_date = ?, total_working_days = ?
+                 WHERE id = ?`,
                 [sw.switch_date, daysActuallyUsed, sw.original_application_id]
             );
 
+            // Approve new leave application
             await db.query(
-                `UPDATE leave_applications SET status = 'approved', reviewed_by = ?, reviewed_at = NOW() WHERE id = ?`,
+                `UPDATE leave_applications 
+                 SET status = 'approved', reviewed_by = ?, reviewed_at = NOW()
+                 WHERE id = ?`,
                 [admin_id, sw.new_application_id]
             );
 
+            // Return unused days to original leave balance
             if (daysToReturn > 0) {
                 await db.query(
                     `UPDATE leave_balances
-                     SET used_days = used_days - ?, remaining_days = remaining_days + ?
+                     SET used_days = used_days - ?,
+                         remaining_days = remaining_days + ?
                      WHERE staff_id = ? AND leave_type_id = ? AND year = ?`,
-                    [daysToReturn, daysToReturn, original.staff_id, original.leave_type_id, currentYear]
+                    [daysToReturn, daysToReturn,
+                    original.staff_id, original.leave_type_id, currentYear]
                 );
             }
 
+            // Deduct days from new leave type balance
             await db.query(
                 `UPDATE leave_balances
-                 SET used_days = used_days + ?, remaining_days = remaining_days - ?
+                 SET used_days = used_days + ?,
+                     remaining_days = remaining_days - ?
                  WHERE staff_id = ? AND leave_type_id = ? AND year = ?`,
                 [newApplication.total_working_days, newApplication.total_working_days,
                 newApplication.staff_id, newApplication.leave_type_id, currentYear]
@@ -518,7 +544,9 @@ const reviewLeaveSwitch = async (req, res) => {
         }
 
         if (status === 'denied') {
-            await db.query('DELETE FROM leave_applications WHERE id = ?', [sw.new_application_id]);
+            await db.query(
+                'DELETE FROM leave_applications WHERE id = ?', [sw.new_application_id]
+            );
         }
 
         res.status(200).json({ message: `Leave switch ${status} successfully.` });
